@@ -9,6 +9,9 @@ import time
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 
+#Close previous matplot lib figures
+plt.close("all")
+
 #Class definitions
 class LLNode:
     # Constructor: 
@@ -49,9 +52,9 @@ def expander(cur_node, action):
 
 def heuristic(node, goal_node):
     #The function that calculates heuristic 
-    #Euclidean distance is used as heurstic
+    #Manhatten is used as heurstic since no diagoanl motion allowed
     
-    return np.sqrt((node[0] - goal_node.x)**2 + (node[1] - goal_node.y)**2)
+    return (np.abs(node[0] - goal_node.x) + np.abs(node[1] - goal_node.y))
 
 def Astar(start, goal):
     #The A Star function
@@ -101,18 +104,31 @@ def Astar(start, goal):
             if any(new == [temp.x, temp.y] for temp in closed_list): #check if in closed list
                 continue
             
-            #Check if we already visitd the node
+            #calculate cost to get to the node 
+            new_orient = np.arctan2((new[1] - cur_node.y),(new[0] - cur_node.x)) 
+            if cur_node.parent == None:
+                old_orient = 0.0                
+            else:
+                old_orient = np.arctan2((cur_node.y - cur_node.parent.y),(cur_node.x - cur_node.parent.x))
+            #Penalise turns to avoid zig zag motion
+            if np.abs(old_orient - new_orient) > 3.2:
+                cost = params.cost + 1.57
+            else:
+                cost = params.cost + np.abs(old_orient - new_orient)
+            
+            
+            #Check if we have already visited the node
             visited = False
             for temp in fringe:
                 if (new == [temp.x, temp.y]):
                     visited = True
-                    if (temp.g < cur_node.g + params.cost):
-                        temp.g = cur_node.g + params.cost
+                    if (temp.g < cur_node.g + cost):
+                        temp.g = cur_node.g + cost
                         temp.parent = cur_node
             
             #If not add to fringe
             if visited == False:
-                new_g = cur_node.g + params.cost
+                new_g = cur_node.g + cost
                 new_h = heuristic(new, goal_node)                
                 new_node =  LLNode(new, new_g, new_h, cur_node)
                 fringe.append(new_node)
@@ -125,7 +141,7 @@ def Astar(start, goal):
             
             #Debug
             for temp in fringe:
-                print(temp.x, temp.y, temp.g+temp.h ) 
+                #print(temp.x, temp.y, temp.g,temp.h ) 
                 plt.scatter(temp.x, temp.y, c = cm.autumn((temp.g)/(temp.g+temp.h)))
             #time.sleep(0.1)    
             #input('h')
@@ -140,7 +156,7 @@ def Astar(start, goal):
     
 #Testing
 start = [0.0, 0.0]
-goal = [0.0, 50.0]
+goal = [5.0, 5.0]
 Astar(start, goal)    
     
     
