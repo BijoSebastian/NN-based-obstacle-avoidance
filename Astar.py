@@ -28,25 +28,50 @@ class obsinfo:
     def __init__(self, coords = [0.0, 0.0], denied_actions = []): 
 
         self.x = coords[0]
-        self.y = coords[1]
+        self.y = coords[1]       
         self.obs_actionlist = denied_actions
         
-#class LL:
-#    # Constructor: 
-#    def __init__(self, node = None): 
-#        self.head = node     
-        
 #Globals
-global gridres_x, gridres_y #Size of the grid along the x and y dimensions
-gridres_x = params.gridres_x 
-gridres_y = params.gridres_y 
+global obs_list
+obs_list = []
 
+def boundary_builder():
+    global obs_list
+    
+    for i in np.arange(params.ymin + params.gridres_y , params.ymax, params.gridres_y):
+        temp = obsinfo([params.xmin, i], [0])
+        obs_list.append(temp)
+        
+    for i in np.arange(params.ymin + params.gridres_y , params.ymax, params.gridres_y):
+        temp = obsinfo([params.xmax, i], [2])
+        obs_list.append(temp)
+        
+    for i in np.arange(params.xmin + params.gridres_x , params.xmax, params.gridres_x):
+        temp = obsinfo([i, params.ymin], [1])
+        obs_list.append(temp)
+        
+    for i in np.arange(params.xmin + params.gridres_x , params.xmax, params.gridres_x):
+        temp = obsinfo([i, params.ymax], [3])
+        obs_list.append(temp) 
+    
+    temp = obsinfo([params.xmin, params.ymin], [0,1])
+    obs_list.append(temp)
+    temp = obsinfo([params.xmax, params.ymin], [2,1])
+    obs_list.append(temp)
+    temp = obsinfo([params.xmin, params.ymax], [0,3])
+    obs_list.append(temp)
+    temp = obsinfo([params.xmax, params.ymax], [2,3])
+    obs_list.append(temp)
+     
+    #Debug
+    #for i in range(len(obs_list)):
+        #print(obs_list[i].x, obs_list[i].y, obs_list[i].obs_actionlist)
+        
 def expander(cur_node, action):
     #The function that expands the cur_node of the robot based on given action
-    global gridres_x, gridres_y
    
-    new_x = cur_node.x +  action[0]*gridres_x
-    new_y = cur_node.y +  action[1]*gridres_y
+    new_x = cur_node.x +  action[0]*params.gridres_x
+    new_y = cur_node.y +  action[1]*params.gridres_y 
     
     return [new_x, new_y]
 
@@ -63,7 +88,7 @@ def Astar(start, goal):
     start_node = LLNode(start)
     goal_node = LLNode(goal)
     closed_list = []
-    obs_list = []
+    global obs_list
     fringe = [start_node]
     
     #Define possible actions at each node
@@ -93,10 +118,14 @@ def Astar(start, goal):
 
         #Check for allowed actions
         denied_actions = [temp.obs_actionlist for temp in obs_list if [cur_node.x, cur_node.y] == [temp.x, temp.y]]
-            
+        if len(denied_actions) > 0:
+            denied_actions = denied_actions[0]
+        #print(denied_actions, )    
+        
         for i,action in enumerate(delta): 
             
             if i in denied_actions: #apply allowed actions on current state
+                #print('bad action', i)
                 continue
             
             new = expander(cur_node, action) #get new node
@@ -112,7 +141,7 @@ def Astar(start, goal):
                 old_orient = np.arctan2((cur_node.y - cur_node.parent.y),(cur_node.x - cur_node.parent.x))
             #Penalise turns to avoid zig zag motion
             if np.abs(old_orient - new_orient) > 3.2:
-                cost = params.cost + 1.57
+                cost = params.cost + 1.58
             else:
                 cost = params.cost + np.abs(old_orient - new_orient)
             
@@ -122,7 +151,7 @@ def Astar(start, goal):
             for temp in fringe:
                 if (new == [temp.x, temp.y]):
                     visited = True
-                    if (temp.g < cur_node.g + cost):
+                    if (temp.g > cur_node.g + cost):
                         temp.g = cur_node.g + cost
                         temp.parent = cur_node
             
@@ -137,7 +166,7 @@ def Astar(start, goal):
             print('Failed to find path')
             resign = True
         else:
-            fringe  = sorted(fringe, key=lambda llnode: llnode.g+params.heuristic_weight*llnode.h, reverse = True) #sort fringe by g+heusristic
+            fringe  = sorted(fringe, key=lambda llnode: llnode.g+(params.heuristic_weight*llnode.h), reverse = True) #sort fringe by g+heusristic
             
             #Debug
             for temp in fringe:
@@ -151,12 +180,13 @@ def Astar(start, goal):
             print(cur_node.x, cur_node.y)
             plt.plot([cur_node.x, cur_node.parent.x], [cur_node.y, cur_node.parent.y], c = [0.0, 0.0, 0.5]);
             cur_node = cur_node.parent            
-        print(cur_node.x, cur_node.y)    
+        print(cur_node.x, cur_node.y)
         plt.show()    
     
 #Testing
 start = [0.0, 0.0]
-goal = [5.0, 5.0]
+goal = [2.0, 5.0]
+boundary_builder()
 Astar(start, goal)    
     
     

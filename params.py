@@ -2,9 +2,17 @@
 """
 The parameters
 """
-#Size of the grid along the x and y dimensions
+#Resplution of the grid along the x and y dimensions
 gridres_x = 1.0#500.0 #mm
 gridres_y = 1.0#500.0 #mm
+
+#Size of grid along X
+xmin = 0.0
+xmax = 10.0
+
+#Size of grid along Y
+ymin = 0.0
+ymax = 10.0
 
 #Edge costs
 cost = 1.0 #cost for four conrners
