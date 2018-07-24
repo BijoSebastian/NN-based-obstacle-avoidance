@@ -197,11 +197,13 @@ def Astar(start, goal):
         print(cur_node.x, cur_node.y)
         plt.show()    
     
-#Testing
-start = [0.0, 0.0]
-goal = [7.6, 8.4]
-boundary_builder()
-Astar(start, goal)    
+# =============================================================================
+# #Testing
+# start = [0.0, 0.0]
+# goal = [7.6, 8.4]
+# boundary_builder()
+# Astar(start, goal)    
+# =============================================================================
     
     
     
