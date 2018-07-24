@@ -57,6 +57,8 @@ weights_path = "weights.best.h5"
 model = get_testing_model()
 model.load_weights(weights_path)
 
-#All of the above sould happen before everything starts up
-#The next one line is for the testing 
-model.predict([img[None,...,None], np.array(float(IMU1))[None,...], np.array(float(IMU2))[None,...]])
+# =============================================================================
+# #All of the above sould happen before everything starts up
+# #The next one line is for the testing 
+# model.predict([img[None,...,None], np.array(float(IMU1))[None,...], np.array(float(IMU2))[None,...]])
+# =============================================================================
