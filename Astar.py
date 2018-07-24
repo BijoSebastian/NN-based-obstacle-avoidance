@@ -75,11 +75,24 @@ def expander(cur_node, action):
     
     return [new_x, new_y]
 
-def heuristic(node, goal_node):
+def heuristic(state, goal):
     #The function that calculates heuristic 
     #Manhatten is used as heurstic since no diagoanl motion allowed
     
-    return (np.abs(node[0] - goal_node.x) + np.abs(node[1] - goal_node.y))
+    #return np.sqrt((state[0] - goal[0])**2 + (state[1] - goal[1])**2)
+    return (np.abs(state[0] - round(goal[0])) + np.abs(state[1] - round(goal[1])))
+
+def at_goal(state, goal):
+    #Function to reach if at goal
+    #Using half diagoal length of cell as threshold distance to decide if goal is nearby
+    thresh_dist = (np.sqrt((params.gridres_x**2) + (params.gridres_y**2)))/2.0
+    
+    dist = np.sqrt((state[0] - goal[0])**2 + (state[1] - goal[1])**2)
+    
+    if dist <= thresh_dist:
+        return True
+    else:
+        return False
 
 def Astar(start, goal):
     #The A Star function
@@ -108,7 +121,8 @@ def Astar(start, goal):
         cur_node = fringe.pop() #POP the least cost node from fringe  
         print('current',cur_node.x, cur_node.y)   
         
-        if heuristic([cur_node.x, cur_node.y], goal_node) == 0.0 : #check if we just popped goal if so end now
+        #check if we just popped goal if so end now
+        if at_goal([cur_node.x, cur_node.y], [goal_node.x, goal_node.y]): 
             print('Found path')
             found = True
             continue
@@ -158,7 +172,7 @@ def Astar(start, goal):
             #If not add to fringe
             if visited == False:
                 new_g = cur_node.g + cost
-                new_h = heuristic(new, goal_node)                
+                new_h = heuristic(new, [goal_node.x, goal_node.y])                
                 new_node =  LLNode(new, new_g, new_h, cur_node)
                 fringe.append(new_node)
             
@@ -170,7 +184,7 @@ def Astar(start, goal):
             
             #Debug
             for temp in fringe:
-                #print(temp.x, temp.y, temp.g,temp.h ) 
+                print(temp.x, temp.y, temp.g,temp.h ) 
                 plt.scatter(temp.x, temp.y, c = cm.autumn((temp.g)/(temp.g+temp.h)))
             #time.sleep(0.1)    
             #input('h')
@@ -185,7 +199,7 @@ def Astar(start, goal):
     
 #Testing
 start = [0.0, 0.0]
-goal = [2.0, 5.0]
+goal = [7.6, 8.4]
 boundary_builder()
 Astar(start, goal)    
     
