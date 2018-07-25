@@ -41,8 +41,16 @@ def robot_setvel(V,W, vrep, clientID, robot_LeftMotorHandle, robot_RightMotorHan
         vrep.simxSetJointTargetVelocity(clientID, robot_LeftMotorHandle[i], vel_l, vrep.simx_opmode_streaming)
         vrep.simxSetJointTargetVelocity(clientID, robot_RightMotorHandle[i], vel_r, vrep.simx_opmode_streaming)
     
-    return    
-                                                                     
+    return  
+  
+def robot_stop(vrep, clientID, robot_LeftMotorHandle, robot_RightMotorHandle):
+    #Function to stop robot          
+    
+    for i in range(4):
+        vrep.simxSetJointTargetVelocity(clientID, robot_LeftMotorHandle[i], 0.0, vrep.simx_opmode_streaming)
+        vrep.simxSetJointTargetVelocity(clientID, robot_RightMotorHandle[i], 0.0, vrep.simx_opmode_streaming)
+    
+    return    robot_stop                                                                     
 ###################CONTROLLER###################################################
 def gtg(state, goal):
     #The Go to goal controller
@@ -95,6 +103,5 @@ def orient_robot(r_theta, g_theta):
     params.prev_heading_error = dt
     
     #control input for linear velocity
-    V = 0.0
-    print(dt, W)                                   
+    V = 0.0                                  
     return [V,W]                     
