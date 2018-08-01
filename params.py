@@ -2,6 +2,8 @@
 """
 The parameters
 """
+import numpy as np
+
 #Resplution of the grid along the x and y dimensions
 gridres_x = 500.0 #mm
 gridres_y = 500.0 #mm
@@ -13,9 +15,6 @@ xmax = 10.0*gridres_x
 #Size of grid along Y
 ymin = 0.0
 ymax = 10.0*gridres_y
-
-#Edge costs
-cost = 1.0 #cost for four conrners
 
 #weight of heuristic compared to distance from start 
 heuristic_weight = 1.0 #Increasing this will make the code go faster but at the cost of optimality also the heusristic nust be good 
@@ -30,12 +29,16 @@ y_g = 4000.0 #mm
 
 #Controller parameters
 #Gains
-Kp = 0.656
+Kp = 0.156
 Kd = 0.0002
 Ki = 0.0
 #Previous error history
 total_heading_error = 0.0
 prev_heading_error = 0.0
+
+#Threshold distance
+#1byfourth of the diagoanl grid resolution
+thresh_dist = 100.0#(np.sqrt((gridres_x**2) + (gridres_y**2)))/10.0
 
 #Permenant obstacle info assuming the world do not change
 class obsinfo:
@@ -48,3 +51,9 @@ class obsinfo:
 
 #global obs_list
 obs_list = []
+
+#Define possible actions at each node
+delta = [[-1.0,  0.0], #go left
+         [ 0.0, -1.0], #go down
+         [ 1.0,  0.0], #go right
+         [ 0.0,  1.0]] #go up

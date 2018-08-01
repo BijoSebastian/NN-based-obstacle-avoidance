@@ -50,7 +50,11 @@ def robot_stop(vrep, clientID, robot_LeftMotorHandle, robot_RightMotorHandle):
         vrep.simxSetJointTargetVelocity(clientID, robot_LeftMotorHandle[i], 0.0, vrep.simx_opmode_streaming)
         vrep.simxSetJointTargetVelocity(clientID, robot_RightMotorHandle[i], 0.0, vrep.simx_opmode_streaming)
     
-    return    robot_stop                                                                     
+    #Reset error counters
+    params.total_heading_error = 0.0
+    params.prev_heading_error = 0.0
+    
+    return                                                                        
 ###################CONTROLLER###################################################
 def gtg(state, goal):
     #The Go to goal controller
@@ -64,7 +68,7 @@ def gtg(state, goal):
      
     #determine how far to rotate to face the goal point
     #PS. ALL ANGLES ARE IN RADIANS
-    dt = (np.arctan2((localgoal_y - y), (localgoal_x - x))) - theta
+    dt = theta - (np.arctan2((localgoal_y - y), (localgoal_x - x)))
     #restrict angle to (-pi,pi)
     dt = ((dt + np.pi)%(2.0*np.pi)) - np.pi
     dt = ((dt*180.0)/np.pi)
@@ -75,15 +79,15 @@ def gtg(state, goal):
     params.prev_heading_error = dt
   
     #find distance to goal
-    d = np.sqrt(((localgoal_x - x)**2) + ((localgoal_y - y)**2))
+    #d = np.sqrt(((localgoal_x - x)**2) + ((localgoal_y - y)**2))
     
     #velocity parameters
     #velMult = 0.1#mm/s
-    distThresh = 0.1#mm
+    vmax = 0.1#mm
     
     #control input for linear velocity
     #V = ((np.arctan((d - distThresh))) - (np.arctan(dt)))*velMult
-    V = (0.12/1.5)*(np.arctan(d - distThresh))
+    V = -1.0*vmax*(1.0 - (2.0*(np.arctan(abs(dt))/np.pi)))
                                        
     return [V,W]                     
                  

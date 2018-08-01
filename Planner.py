@@ -23,6 +23,13 @@ class LLNode:
         self.h = h
         self.parent = parent
 
+def translator(state):
+    #function to translate from real world to planner grid co:ordinates
+    
+    state[0] = (round(state[0]/params.gridres_x))*params.gridres_x
+    state[1] = (round(state[1]/params.gridres_y))*params.gridres_y
+    return state
+
 def boundary_builder():
     #Function to build the boundary wall 
     
@@ -55,11 +62,11 @@ def boundary_builder():
     #for i in range(len(params.obs_list)):
         #print(params.obs_list[i].x, params.obs_list[i].y, params.obs_list[i].obs_actionlist)
         
-def expander(cur_node, action):
+def expander(state, action):
     #The function that expands the cur_node of the robot based on given action
    
-    new_x = cur_node.x +  action[0]*params.gridres_x
-    new_y = cur_node.y +  action[1]*params.gridres_y 
+    new_x = state[0] +  action[0]*params.gridres_x
+    new_y = state[1] +  action[1]*params.gridres_y 
     
     return [new_x, new_y]
 
@@ -72,18 +79,42 @@ def heuristic(state, goal):
 
 def at_goal(state, goal):
     #Function to reach if at goal
-    #Using half diagoal length of cell as threshold distance to decide if goal is nearby
-    thresh_dist = (np.sqrt((params.gridres_x**2) + (params.gridres_y**2)))/2.0
-    
+   
     dist = np.sqrt((state[0] - goal[0])**2 + (state[1] - goal[1])**2)
-    
-    if dist <= thresh_dist:
+
+    if dist <= params.thresh_dist:
         return True
     else:
         return False
+    
+def wall_plotter():
+    #Plot all walls
+    plt.clf()
+    for temp in params.obs_list:
+        for temp2 in temp.obs_actionlist:
+            action = params.delta[temp2]
+            cx = temp.x + action[0]*(params.gridres_x/2.0)
+            cy = temp.y + action[1]*(params.gridres_y/2.0)
+            if action[1] == 0.0:
+                ax = cx
+                ay = cy  - (params.gridres_y/2.0) 
+                bx = cx
+                by = cy  + (params.gridres_y/2.0) 
+            else:
+                ax = cx - (params.gridres_x/2.0) 
+                ay = cy  
+                bx = cx + (params.gridres_y/2.0)
+                by = cy      
+            plt.plot([ax, bx], [ay, by], c = [0.3, 0.4, 0.9])
+    plt.show() 
+    return
 
 def Astar(start, goal):
     #The A Star function
+    
+    #Translate to planner coordinates
+    start = translator(start)
+    goal = translator(goal)
     
     #Set up the graphs
     start_node = LLNode(start)
@@ -91,11 +122,8 @@ def Astar(start, goal):
     closed_list = []
     fringe = [start_node]
     
-    #Define possible actions at each node
-    delta = [[-1.0,  0.0], #go left
-             [ 0.0, -1.0], #go down
-             [ 1.0,  0.0], #go right
-             [ 0.0,  1.0]] #go up
+    #Plot all walls
+    wall_plotter()
     
     #Plot
     plt.scatter(start_node.x, start_node.y, c=cm.autumn(0.0))
@@ -106,7 +134,7 @@ def Astar(start, goal):
     while (found != True and resign != True):
 
         cur_node = fringe.pop() #POP the least cost node from fringe  
-        print('current',cur_node.x, cur_node.y)   
+        #print('current',cur_node.x, cur_node.y)   
         
         #check if we just popped goal if so end now
         if at_goal([cur_node.x, cur_node.y], [goal_node.x, goal_node.y]): 
@@ -123,13 +151,13 @@ def Astar(start, goal):
             denied_actions = denied_actions[0]
         #print(denied_actions, )    
         
-        for i,action in enumerate(delta): 
+        for i,action in enumerate(params.delta): 
             
             if i in denied_actions: #apply allowed actions on current state
                 #print('bad action', i)
                 continue
             
-            new = expander(cur_node, action) #get new node
+            new = expander([cur_node.x, cur_node.y], action) #get new node
 
             if any(new == [temp.x, temp.y] for temp in closed_list): #check if in closed list
                 continue
@@ -142,9 +170,9 @@ def Astar(start, goal):
                 old_orient = np.arctan2((cur_node.y - cur_node.parent.y),(cur_node.x - cur_node.parent.x))
             #Penalise turns to avoid zig zag motion
             if np.abs(old_orient - new_orient) > 3.2:
-                cost = params.cost + 1.58
+                cost = 2.58*heuristic([cur_node.x, cur_node.y], new)
             else:
-                cost = params.cost + np.abs(old_orient - new_orient)
+                cost = (1.0 + np.abs(old_orient - new_orient))*heuristic([cur_node.x, cur_node.y], new)
             
             
             #Check if we have already visited the node
@@ -171,19 +199,29 @@ def Astar(start, goal):
             
             #Debug
             for temp in fringe:
-                print(temp.x, temp.y, temp.g,temp.h ) 
+                #print(temp.x, temp.y, temp.g,temp.h ) 
                 plt.scatter(temp.x, temp.y, c = cm.autumn((temp.g)/(temp.g+temp.h)))
             #time.sleep(0.1)    
             #input('h')
             
     if found:
+        path = []
+        path.append([cur_node.x, cur_node.y])
         while cur_node.parent != None:
-            print(cur_node.x, cur_node.y)
-            plt.plot([cur_node.x, cur_node.parent.x], [cur_node.y, cur_node.parent.y], c = [0.0, 0.0, 0.5]);
-            cur_node = cur_node.parent            
-        print(cur_node.x, cur_node.y)
-        plt.show()    
-    
+            #print(cur_node.x, cur_node.y)
+            plt.plot([cur_node.x, cur_node.parent.x], [cur_node.y, cur_node.parent.y], c = [0.0, 0.5, 0.0])
+            cur_node = cur_node.parent  
+            path.append([cur_node.x, cur_node.y])
+       
+        #print(cur_node.x, cur_node.y)
+        plt.draw()    
+        plt.pause(0.15)
+        
+        #return path
+        return path
+    else:
+        return None
+        
 # =============================================================================
 # #Testing
 # start = [0.0, 0.0]

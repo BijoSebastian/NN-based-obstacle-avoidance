@@ -18,66 +18,105 @@ import Controller
 def look_around(vrep, clientID, kinectd_h, robot_Handle, robot_LeftMotorHandle, robot_RightMotorHandle):
     #function to gather obstacle info
     denied_actions = []
-    flag = False
-   
-    sides = [3.14, -1.57, 0.0, 1.57]
-    #Cycle through all four sides and see which actions are possible and which not
-    for i in range(4):
+    flag_denied = False
+    flag_exist = False
+    
+    #Make robot face x axis before all data collection
+    state = Controller.localise(vrep, clientID, robot_Handle)
+    Controller.orient_robot(state[2], 0.0)
+    #Get start pos
+    res, start_robot_Position = vrep.simxGetObjectPosition(clientID, robot_Handle, -1 , vrep.simx_opmode_buffer)
+    res, start_robot_Orientation = vrep.simxGetObjectOrientation(clientID, robot_Handle, -1 , vrep.simx_opmode_buffer)
+    
+    print('Looking around at', start_robot_Position[0:2])
+    
+    #Cycle through to see which actions are possible and which not
+    for i,action in enumerate(params.delta): 
         
-        #Allign the robot
+        print('action', action)
+        #get robot position
         state = Controller.localise(vrep, clientID, robot_Handle)
-        while abs(state[2] - sides[i]) > 0.1:
-            [V,W] = Controller.orient_robot(state[2], sides[i])
+        
+        #Get action
+        new = Planner.expander(state[0:2], action) #get new node
+        
+        #Set params:
+        flag_go = True
+        flag_prev = True
+        counter = 0
+        
+        while flag_go:
+            [V,W] = Controller.gtg(state,new)
             Controller.robot_setvel(V,W, vrep, clientID, robot_LeftMotorHandle, robot_RightMotorHandle)
-            state = Controller.localise(vrep, clientID, robot_Handle)  
-            time.sleep(0.1)
+            state = Controller.localise(vrep, clientID, robot_Handle)              
+            #print('state', state)
+            
+            #Get the sensor info
+            res, res1, buffer = vrep.simxGetVisionSensorDepthBuffer(clientID, kinectd_h, vrep.simx_opmode_oneshot_wait)     
+            buffer = np.reshape(buffer,(48,64))
+            buffer = buffer*255
+            buffer = buffer.astype(int)
+            buffer = cv2.flip( buffer, 0 )
+            res , robot_Orientation = vrep.simxGetObjectOrientation(clientID, robot_Handle, -1 , vrep.simx_opmode_buffer)
+            alpha = np.rad2deg(robot_Orientation[0])
+            alpha = (alpha + 40.0)/80.0
+            beta =  np.rad2deg(robot_Orientation[1])
+            beta = (beta + 40.0)/80.0
+            temp = CNN.model.predict([buffer[None,...,None], np.array(float(alpha))[None,...], np.array(float(beta))[None,...]])
+            #print(temp[0][0])
+            if temp[0][0] <= 0.2:         
+                if flag_prev == False:
+                    counter +=1
+                flag_prev = False
+            else:
+                counter = 0
+                flag_prev = True
+            
+            #Checks
+            if counter > 5 or Planner.at_goal(state[0:2], new):
+                flag_go = False   
+                if Planner.at_goal(state[0:2], new):
+                    print('reached goal')                
+                else:
+                    print('detected obs')
+                    
+        #Stop robot, stop simulation, reset robot loc and start simulation
         Controller.robot_stop(vrep, clientID, robot_LeftMotorHandle, robot_RightMotorHandle)    
-        params.total_heading_error = 0.0
-        params.prev_heading_error = 0.0
-        time.sleep(2)
-
-        #Get the sensor info
-        res, res1, buffer = vrep.simxGetVisionSensorDepthBuffer(clientID, kinectd_h, vrep.simx_opmode_oneshot_wait)
-        print('errorcode', res, res1)
-        buffer = np.reshape(buffer,(48,64))
-        buffer = buffer*255
-        buffer = buffer.astype(int)
-        buffer = cv2.flip( buffer, 0 )
-        cv2.namedWindow('depth', cv2.WINDOW_NORMAL)
-        cv2.imshow('depth',buffer/255.0)
-        time.sleep(2.0)
-        cv2.destroyAllWindows()        
-        res , robot_Orientation = vrep.simxGetObjectOrientation(clientID, robot_Handle, -1 , vrep.simx_opmode_buffer)
-        alpha = np.rad2deg(robot_Orientation[0])
-        alpha = (alpha + 40.0)/80.0
-        beta =  np.rad2deg(robot_Orientation[1])
-        beta = (beta + 40.0)/80.0
-        temp = CNN.model.predict([buffer[None,...,None], np.array(float(alpha))[None,...], np.array(float(beta))[None,...]])
-        cv2.imwrite(str(i)+'.png',buffer)
-        print('alpha', alpha, 'beta', beta)
-        print('result', temp)
-        if temp[0][0] == 0:
-            flag = True
+        vrep.simxStopSimulation(clientID, vrep.simx_opmode_oneshot)
+        if counter > 5:                    
+            cv2.namedWindow('depth', cv2.WINDOW_NORMAL)
+            cv2.imshow('depth',buffer/255.0)
+            cv2.waitKey(200)
+        vrep.simxSetObjectPosition(clientID, robot_Handle, -1, start_robot_Position, vrep.simx_opmode_oneshot)
+        vrep.simxSetObjectOrientation(clientID, robot_Handle, -1, start_robot_Orientation, vrep.simx_opmode_oneshot)
+        time.sleep(3.0)#So that the motion is completed
+        vrep.simxStartSimulation(clientID, vrep.simx_opmode_oneshot)
+        cv2.destroyAllWindows() 
+        
+        if counter > 5:        
+            flag_denied = True
             denied_actions.append(i)
     
     #Get the grid based location as seen by the planner
-    state = Controller.localise(vrep, clientID, robot_Handle)
-    state[0]  = (round(state[0]/params.gridres_x))*params.gridres_x
-    state[1]  = (round(state[0]/params.gridres_y))*params.gridres_y
+    #Translate to planner coordinates
+    start_loc = start_robot_Position[0:2]
+    start_loc[0] = start_loc[0]*1000.0
+    start_loc[1] = start_loc[1]*1000.0
+    start_loc = Planner.translator(start_loc)
     
-    flag2 = False
     #If atleast one denied action    
-    if flag:
+    if flag_denied:
         #If already existing then just update
         for node in params.obs_list:
-            if [node.x, node.y] == state[0:2]:
-                node.obs_actionlist = denied_actions
-                flag2 = True
+            if [node.x, node.y] == start_loc:
+                node.obs_actionlist = node.obs_actionlist + denied_actions
+                node.obs_actionlist = list(set(node.obs_actionlist))
+                flag_exist = True
                 break
             
         #If not existing then just append    
-        if flag2 == False:
-            temp = params.obsinfo(state[0:2],denied_actions)
+        if flag_exist == False:
+            temp = params.obsinfo(start_loc,denied_actions)
             params.obs_list.append(temp)               
     
 ###############################Main############################################
@@ -137,76 +176,47 @@ if res == vrep.simx_return_ok:
     print ("---!!! Started Simulation !!! ---")
     time.sleep(4)#So that the robot stabilizes
 
-# =============================================================================
-# res, res1, buffer = vrep.simxGetVisionSensorDepthBuffer(clientID, kinectd_h, vrep.simx_opmode_oneshot_wait)
-# time.sleep(2)
-# res, res1, buffer = vrep.simxGetVisionSensorDepthBuffer(clientID, kinectd_h, vrep.simx_opmode_oneshot_wait)
-# time.sleep(2)
-# res, res1, buffer = vrep.simxGetVisionSensorDepthBuffer(clientID, kinectd_h, vrep.simx_opmode_oneshot_wait)
-# print('errorcode', res, res1)
-# buffer = np.reshape(buffer,(48,64))
-# buffer = buffer*255
-# buffer = buffer.astype(int)
-# buffer = cv2.flip( buffer, 0 )
-# cv2.namedWindow('depth', cv2.WINDOW_NORMAL)
-# cv2.imshow('depth',buffer/255.0)
-# cv2.waitKey(0)
-# cv2.destroyAllWindows()        
-# res , robot_Orientation = vrep.simxGetObjectOrientation(clientID, robot_Handle, -1 , vrep.simx_opmode_buffer)
-# alpha = np.rad2deg(robot_Orientation[0])
-# alpha = (alpha + 40.0)/80.0
-# beta =  np.rad2deg(robot_Orientation[1])
-# beta = (beta + 40.0)/80.0
-# print(buffer[10][10])
-# temp = CNN.model.predict([buffer[None,...,None], np.array(float(alpha))[None,...], np.array(float(beta))[None,...]])
-# print('result', temp)
-# =============================================================================
+#Extract current location of the robot 
+state = Controller.localise(vrep, clientID, robot_Handle)
+ 
+#Define main gaol
+main_goal = [params.x_g, params.y_g]
+ 
+#Build the planning boundaries
+Planner.boundary_builder()
+  
+#start the run
+while Planner.at_goal(state[0:2], main_goal) == False:  
 
-
-# =============================================================================
-# #Extract current location of the robot 
-# state = Controller.localise(vrep, clientID, robot_Handle)
-# 
-# #Define main gaol
-# main_goal = [params.x_g, params.y_g]
-# 
-# #start the run
-# #while Planner.at_goal(state[0:2], main_goal) == False:
-#     
-# #Gather information and store obstacle info in global thingy
-# look_around(vrep, clientID, kinectd_h, robot_Handle, robot_LeftMotorHandle, robot_RightMotorHandle)
-# =============================================================================
-
-##Testing
-flag_go = True
-flag_prev = True
-counter = 0
-while flag_go:
-     Controller.robot_setvel(-0.04,0.0, vrep, clientID, robot_LeftMotorHandle, robot_RightMotorHandle)
-     #Get the sensor info
-     res, res1, buffer = vrep.simxGetVisionSensorDepthBuffer(clientID, kinectd_h, vrep.simx_opmode_oneshot_wait)     
-     buffer = np.reshape(buffer,(48,64))
-     buffer = buffer*255
-     buffer = buffer.astype(int)
-     buffer = cv2.flip( buffer, 0 )
-     res , robot_Orientation = vrep.simxGetObjectOrientation(clientID, robot_Handle, -1 , vrep.simx_opmode_buffer)
-     alpha = np.rad2deg(robot_Orientation[0])
-     alpha = (alpha + 40.0)/80.0
-     beta =  np.rad2deg(robot_Orientation[1])
-     beta = (beta + 40.0)/80.0
-     temp = CNN.model.predict([buffer[None,...,None], np.array(float(alpha))[None,...], np.array(float(beta))[None,...]])
-     print(temp[0][0])
-     if temp[0][0] <= 0.2:         
-         if flag_prev == False:
-             counter +=1
-         flag_prev = False
-     else:
-         counter = 0
-     if counter > 5:
-         flag_go = False
-         cv2.imwrite(str(i)+'.png',buffer)
-         print('alpha', alpha, 'beta', beta)
-         print('result', temp)
-     time.sleep(0.05)    
-Controller.robot_stop(vrep, clientID, robot_LeftMotorHandle, robot_RightMotorHandle)          
+    #Gather information and store obstacle info in global thingy
+    look_around(vrep, clientID, kinectd_h, robot_Handle, robot_LeftMotorHandle, robot_RightMotorHandle)
+    
+    #Get the new local goal from the plan
+    l_goal = Planner.Astar(state[0:2], main_goal)
+    if l_goal == None:
+        break
+    else:
+        l_goal = l_goal[-2]
+    
+    #Go to local goal
+    print('Moving to local goal', l_goal)
+    state = Controller.localise(vrep, clientID, robot_Handle)
+    while Planner.at_goal(state[0:2], l_goal) == False:
+        [V,W] = Controller.gtg(state,l_goal)
+        Controller.robot_setvel(V,W, vrep, clientID, robot_LeftMotorHandle, robot_RightMotorHandle)
+        state = Controller.localise(vrep, clientID, robot_Handle)              
+        #print('state', state)
+    print('Reached local goal')    
+    Controller.robot_stop(vrep, clientID, robot_LeftMotorHandle, robot_RightMotorHandle)  
+    
+if Planner.at_goal(state[0:2], main_goal):
+    print('Reached destination') 
+else:
+    print('Unable to reach destination')
+    
+print('Stopping the simulation')    
+#Stop everything and end
+Controller.robot_stop(vrep, clientID, robot_LeftMotorHandle, robot_RightMotorHandle)    
 vrep.simxStopSimulation(clientID, vrep.simx_opmode_oneshot)
+time.sleep(2.0)
+
