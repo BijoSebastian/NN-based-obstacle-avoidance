@@ -15,13 +15,14 @@ plt.close("all")
 #Class definitions
 class LLNode:
     # Constructor: 
-    def __init__(self, coords = [0.0, 0.0], g = 0.0, h = float("Inf"), parent = None): 
+    def __init__(self, coords = [0.0, 0.0], g = 0.0, h = float("Inf"), parent = None, action = None): 
 
         self.x = coords[0]
         self.y = coords[1]
         self.g = g
         self.h = h
         self.parent = parent
+        self.parent_action = action
 
 def translator(state):
     #function to translate from real world to planner grid co:ordinates
@@ -183,12 +184,13 @@ def Astar(start, goal):
                     if (temp.g > cur_node.g + cost):
                         temp.g = cur_node.g + cost
                         temp.parent = cur_node
+                        temp.parent_action = i
             
             #If not add to fringe
             if visited == False:
                 new_g = cur_node.g + cost
                 new_h = heuristic(new, [goal_node.x, goal_node.y])                
-                new_node =  LLNode(new, new_g, new_h, cur_node)
+                new_node =  LLNode(new, new_g, new_h, cur_node, i)
                 fringe.append(new_node)
             
         if len(fringe) == 0: #Check if any left to expand in fringe if not end now
@@ -206,21 +208,24 @@ def Astar(start, goal):
             
     if found:
         path = []
+        action_list = []
         path.append([cur_node.x, cur_node.y])
+        action_list.append(cur_node.parent_action)
         while cur_node.parent != None:
             #print(cur_node.x, cur_node.y)
             plt.plot([cur_node.x, cur_node.parent.x], [cur_node.y, cur_node.parent.y], c = [0.0, 0.5, 0.0])
             cur_node = cur_node.parent  
             path.append([cur_node.x, cur_node.y])
+            action_list.append(cur_node.parent_action)
        
         #print(cur_node.x, cur_node.y)
         plt.draw()    
         plt.pause(0.15)
         
         #return path
-        return path
+        return path, action_list
     else:
-        return None
+        return None, None
         
 # =============================================================================
 # #Testing

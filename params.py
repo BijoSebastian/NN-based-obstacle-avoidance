@@ -10,11 +10,11 @@ gridres_y = 500.0 #mm
 
 #Size of grid along X
 xmin = 0.0
-xmax = 10.0*gridres_x
+xmax = 2500#10.0*gridres_x
 
 #Size of grid along Y
 ymin = 0.0
-ymax = 10.0*gridres_y
+ymax = 3000#10.0*gridres_y
 
 #weight of heuristic compared to distance from start 
 heuristic_weight = 1.0 #Increasing this will make the code go faster but at the cost of optimality also the heusristic nust be good 
@@ -24,8 +24,8 @@ wheel_dia = 0.140
 robot_width = 0.320
 
 #Global goal
-x_g = 4000.0 #mm
-y_g = 4000.0 #mm
+x_g = 1500.0 #mm
+y_g = 2500.0 #mm
 
 #Controller parameters
 #Gains
@@ -57,3 +57,6 @@ delta = [[-1.0,  0.0], #go left
          [ 0.0, -1.0], #go down
          [ 1.0,  0.0], #go right
          [ 0.0,  1.0]] #go up
+
+#CNN obstacle count for detection
+cnn_count = 10
