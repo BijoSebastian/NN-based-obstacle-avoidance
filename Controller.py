@@ -25,8 +25,7 @@ def localise(vrep, clientID, robot_Handle):
     y = robot_Position[1]*1000.0 #in mm
     theta  = robot_Orientation[2]
     
-    #Sent data for recording
-    rcrdr([x, y, theta, vrep.simxGetLastCmdTime(clientID)])
+    
     
     return [x, y, theta]  
     

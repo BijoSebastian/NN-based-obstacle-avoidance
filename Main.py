@@ -138,9 +138,9 @@ while Planner.at_goal(state[0:2], main_goal) == False:
     Controller.robot_stop(vrep, clientID, robot_LeftMotorHandle, robot_RightMotorHandle)    
         
     if counter > params.cnn_count:                    
-        #cv2.namedWindow('depth', cv2.WINDOW_NORMAL)
-        #cv2.imshow('depth',buffer/255.0)
-        #cv2.waitKey(1000)
+        cv2.namedWindow('depth', cv2.WINDOW_NORMAL)
+        cv2.imshow('depth',buffer/255.0)
+        cv2.waitKey(5000)
         print('Going back to', path[-1])
         l_goal = path[-1]
         while Planner.at_goal(state[0:2], l_goal) == False:
@@ -148,8 +148,7 @@ while Planner.at_goal(state[0:2], main_goal) == False:
             Controller.robot_setvel(V,W, vrep, clientID, robot_LeftMotorHandle, robot_RightMotorHandle)
             state = Controller.localise(vrep, clientID, robot_Handle)  
         Controller.robot_stop(vrep, clientID, robot_LeftMotorHandle, robot_RightMotorHandle) 
-        #cv2.destroyAllWindows()
-        time.sleep(1.0)
+        cv2.destroyAllWindows() 
         print('Reached back')
 
         print('Updating map info')
