@@ -105,26 +105,27 @@ while Planner.at_goal(state[0:2], main_goal) == False:
         state = Controller.localise(vrep, clientID, robot_Handle)              
         #print('state', state)
         
-        #Get the sensor info
-        res, res1, buffer = vrep.simxGetVisionSensorDepthBuffer(clientID, kinectd_h, vrep.simx_opmode_oneshot_wait)     
-        buffer = np.reshape(buffer,(48,64))
-        buffer = buffer*255
-        buffer = buffer.astype(int)
-        buffer = cv2.flip( buffer, 0 )
-        res , robot_Orientation = vrep.simxGetObjectOrientation(clientID, robot_Handle, -1 , vrep.simx_opmode_buffer)
-        alpha = np.rad2deg(robot_Orientation[0])
-        alpha = (alpha + 40.0)/80.0
-        beta =  np.rad2deg(robot_Orientation[1])
-        beta = (beta + 40.0)/80.0
-        temp = CNN.model.predict([buffer[None,...,None], np.array(float(alpha))[None,...], np.array(float(beta))[None,...]])
-        #print(temp[0][0])
-        if temp[0][0] <= 0.2:         
-            if flag_prev == False:
-                counter +=1
-            flag_prev = False
-        else:
-            counter = 0
-            flag_prev = True
+        #Get the sensor info if not turning
+        if np.abs(W) < 5.0:
+            res, res1, buffer = vrep.simxGetVisionSensorDepthBuffer(clientID, kinectd_h, vrep.simx_opmode_oneshot_wait)     
+            buffer = np.reshape(buffer,(48,64))
+            buffer = buffer*255
+            buffer = buffer.astype(int)
+            buffer = cv2.flip( buffer, 0 )
+            res , robot_Orientation = vrep.simxGetObjectOrientation(clientID, robot_Handle, -1 , vrep.simx_opmode_buffer)
+            alpha = np.rad2deg(robot_Orientation[0])
+            alpha = (alpha + 40.0)/80.0
+            beta =  np.rad2deg(robot_Orientation[1])
+            beta = (beta + 40.0)/80.0
+            temp = CNN.model.predict([buffer[None,...,None], np.array(float(alpha))[None,...], np.array(float(beta))[None,...]])
+            #print(temp[0][0])
+            if temp[0][0] <= 0.2:         
+                if flag_prev == False:
+                    counter +=1
+                flag_prev = False
+            else:
+                counter = 0
+                flag_prev = True
             
         #Checks
         if counter > params.cnn_count or Planner.at_goal(state[0:2], l_goal):
@@ -138,9 +139,9 @@ while Planner.at_goal(state[0:2], main_goal) == False:
     Controller.robot_stop(vrep, clientID, robot_LeftMotorHandle, robot_RightMotorHandle)    
         
     if counter > params.cnn_count:                    
-        cv2.namedWindow('depth', cv2.WINDOW_NORMAL)
-        cv2.imshow('depth',buffer/255.0)
-        cv2.waitKey(5000)
+        #cv2.namedWindow('depth', cv2.WINDOW_NORMAL)
+        #cv2.imshow('depth',buffer/255.0)
+        #cv2.waitKey(5000)
         print('Going back to', path[-1])
         l_goal = path[-1]
         while Planner.at_goal(state[0:2], l_goal) == False:
@@ -148,7 +149,7 @@ while Planner.at_goal(state[0:2], main_goal) == False:
             Controller.robot_setvel(V,W, vrep, clientID, robot_LeftMotorHandle, robot_RightMotorHandle)
             state = Controller.localise(vrep, clientID, robot_Handle)  
         Controller.robot_stop(vrep, clientID, robot_LeftMotorHandle, robot_RightMotorHandle) 
-        cv2.destroyAllWindows() 
+        #cv2.destroyAllWindows() 
         print('Reached back')
 
         print('Updating map info')

@@ -59,7 +59,7 @@ delta = [[-1.0,  0.0], #go left
          [ 0.0,  1.0]] #go up
 
 #CNN obstacle count for detection
-cnn_count = 15
+cnn_count = 10
 
 #Data recording file
 filename = open("pose.txt", "w")
