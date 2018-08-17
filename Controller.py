@@ -9,6 +9,11 @@ import numpy as np
 import params
 
 ################Helper functions############################################### 
+def rcrdr(data):
+    #Function to record the pose data as it comes in
+    params.filename.write(str(data))
+    params.filename.write("\n")
+
 def localise(vrep, clientID, robot_Handle):
     #Function that will return the current location of the robot
     #PS. THE ORIENTATION IS IN RADIANS        
@@ -19,6 +24,8 @@ def localise(vrep, clientID, robot_Handle):
     x = robot_Position[0]*1000.0 #in mm
     y = robot_Position[1]*1000.0 #in mm
     theta  = robot_Orientation[2]
+    
+    
     
     return [x, y, theta]  
     

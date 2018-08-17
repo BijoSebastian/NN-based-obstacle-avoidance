@@ -174,3 +174,5 @@ Controller.robot_stop(vrep, clientID, robot_LeftMotorHandle, robot_RightMotorHan
 vrep.simxStopSimulation(clientID, vrep.simx_opmode_oneshot)
 time.sleep(2.0)
 
+#close data recording file
+params.filename.close()
