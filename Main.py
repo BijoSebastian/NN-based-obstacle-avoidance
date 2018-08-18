@@ -134,7 +134,9 @@ while Planner.at_goal(state[0:2], main_goal) == False:
                 print('reached goal')                
             else:
                 print('detected obs')
-                    
+        
+        time.sleep(0.1)
+        
     #Stop robot
     Controller.robot_stop(vrep, clientID, robot_LeftMotorHandle, robot_RightMotorHandle)    
         

@@ -13,6 +13,8 @@ def rcrdr(data):
     #Function to record the pose data as it comes in
     params.filename.write(str(data))
     params.filename.write("\n")
+    print(data)
+    return
 
 def localise(vrep, clientID, robot_Handle):
     #Function that will return the current location of the robot
@@ -24,8 +26,8 @@ def localise(vrep, clientID, robot_Handle):
     x = robot_Position[0]*1000.0 #in mm
     y = robot_Position[1]*1000.0 #in mm
     theta  = robot_Orientation[2]
-    time_stamp = vrep.simxGetLastCmdTime(clientID)
-    if time_stamp%250 == 0 and time_stamp > params.prev_time_stamp:
+    time_stamp = vrep.simxGetLastCmdTime(clientID)/1000.0
+    if time_stamp%0.250 <= 0.01 and time_stamp > params.prev_time_stamp:
         rcrdr([robot_Position[0], robot_Position[1], robot_Position[2], time_stamp])
         params.prev_time_stamp = time_stamp
     return [x, y, theta]  
