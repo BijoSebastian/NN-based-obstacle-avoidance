@@ -24,9 +24,10 @@ def localise(vrep, clientID, robot_Handle):
     x = robot_Position[0]*1000.0 #in mm
     y = robot_Position[1]*1000.0 #in mm
     theta  = robot_Orientation[2]
-    
-    
-    
+    time_stamp = vrep.simxGetLastCmdTime(clientID)
+    if time_stamp%250 == 0 and time_stamp > params.prev_time_stamp:
+        rcrdr([robot_Position[0], robot_Position[1], robot_Position[2], time_stamp])
+        params.prev_time_stamp = time_stamp
     return [x, y, theta]  
     
 def robot_setvel(V,W, vrep, clientID, robot_LeftMotorHandle, robot_RightMotorHandle):
